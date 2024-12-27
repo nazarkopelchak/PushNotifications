@@ -5,7 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.messaging.ktx.messaging
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -17,11 +22,21 @@ class ChatViewModel: ViewModel() {
     var state by mutableStateOf(ChatState())
         private set
 
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+
     private val api: FcmApi = Retrofit.Builder()
         .baseUrl("http://10.0.2.2:8080/")
-        .addConverterFactory(MoshiConverterFactory.create())
+        .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
         .create()
+
+    init {
+        viewModelScope.launch {
+            Firebase.messaging.subscribeToTopic("chat").await()
+        }
+    }
 
     fun onRemoteTokenChange(newToken: String) {
         state = state.copy(
